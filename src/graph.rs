@@ -1,0 +1,187 @@
+#![allow(dead_code)]
+
+use std::collections::hash_map::Entry;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::HashMap;
+
+struct Graph<T> {
+    node_count: usize,
+    relationship_count: usize,
+    node_labels: HashMap<usize, T>,
+    offsets: Vec<usize>,
+    lists: Vec<usize>,
+}
+
+impl<T> Graph<T>
+where
+    T: Eq,
+{
+    pub fn node_count(&self) -> usize {
+        self.node_count
+    }
+
+    pub fn relationship_count(&self) -> usize {
+        self.relationship_count
+    }
+
+    pub fn node_label(&self, node_id: usize) -> &T {
+        self.node_labels.get(&node_id).unwrap()
+    }
+
+    pub fn degree(&self, node_id: usize) -> usize {
+        let offset = self.offsets[node_id];
+        let degree = self.lists[offset];
+        degree
+    }
+
+    pub fn neighbors(&self, node_id: usize) -> &[usize] {
+        let offset = self.offsets[node_id];
+        let degree = self.lists[offset];
+        &self.lists[offset + 1..offset + 1 + degree]
+    }
+}
+
+struct GraphBuilder<T> {
+    node_count: usize,
+    relationship_count: usize,
+    node_labels: HashMap<usize, T>,
+    adjacency_lists: HashMap<usize, Vec<usize>>,
+}
+
+impl<T> GraphBuilder<T>
+where
+    T: Eq,
+{
+    pub fn new() -> Self {
+        GraphBuilder {
+            node_count: 0,
+            relationship_count: 0,
+            node_labels: HashMap::new(),
+            adjacency_lists: HashMap::new(),
+        }
+    }
+
+    pub fn add_node(&mut self, node_id: usize, node_label: T) -> &mut Self {
+        if let Entry::Vacant(o) = self.node_labels.entry(node_id) {
+            o.insert(node_label);
+            self.node_count += 1;
+        }
+        self
+    }
+
+    pub fn add_relationship(&mut self, start_node: usize, end_node: usize) -> &mut Self {
+        if !self.node_labels.contains_key(&start_node) {
+            panic!("Start node {} has not been added yet.", start_node);
+        }
+        if !self.node_labels.contains_key(&end_node) {
+            panic!("Start node {} has not been added yet.", end_node);
+        }
+        self.adjacency_lists
+            .entry(start_node)
+            .or_insert_with(Vec::new)
+            .push(end_node);
+        self.relationship_count += 1;
+        self
+    }
+
+    pub fn build(&mut self) -> Graph<T> {
+        let mut offsets = Vec::with_capacity(self.node_count);
+        let mut lists = vec![0];
+        let mut index = 1_usize;
+
+        for node_id in 0..self.node_count {
+            match self.adjacency_lists.entry(node_id) {
+                Occupied(entry) => {
+                    let mut list = entry.get().iter().copied().collect::<Vec<_>>();
+                    list.sort();
+                    let degree = list.len();
+                    offsets.insert(node_id, index);
+                    lists.push(degree);
+                    index += 1;
+                    lists.splice(index..index, list);
+                    index += degree;
+                },
+                Vacant(_) => offsets.insert(node_id,0)
+            }
+        }
+
+        Graph {
+            node_count: self.node_count,
+            relationship_count: self.relationship_count,
+            node_labels: std::mem::take(&mut self.node_labels),
+            offsets,
+            lists,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_node_count() {
+        let graph = GraphBuilder::new()
+            .add_node(0, "foo")
+            .add_node(1, "bar")
+            .build();
+        assert_eq!(2, graph.node_count())
+    }
+
+    #[test]
+    fn test_relationship_count() {
+        let graph = GraphBuilder::new()
+            .add_node(0, "foo")
+            .add_node(1, "bar")
+            .add_relationship(0, 1)
+            .build();
+        assert_eq!(1, graph.relationship_count())
+    }
+
+    #[test]
+    fn test_node_label() {
+        let graph = GraphBuilder::new()
+            .add_node(0, "foo")
+            .add_node(1, "bar")
+            .build();
+        assert_eq!("foo", *graph.node_label(0));
+        assert_eq!("bar", *graph.node_label(1))
+    }
+
+    #[test]
+    fn test_degree() {
+        let graph = GraphBuilder::new()
+            .add_node(0, "foo")
+            .add_node(1, "bar")
+            .add_node(2, "baz")
+            .add_relationship(0, 1)
+            .add_relationship(0, 2)
+            .add_relationship(1, 2)
+            .build();
+
+        assert_eq!(2, graph.degree(0));
+        assert_eq!(1, graph.degree(1));
+        assert_eq!(0, graph.degree(2));
+    }
+
+    #[test]
+    fn test_neighbors() {
+        let graph = GraphBuilder::new()
+            .add_node(0, "foo")
+            .add_node(1, "bar")
+            .add_node(2, "baz")
+            .add_node(3, "boo")
+            .add_relationship(0, 2)
+            .add_relationship(0, 1)
+            .add_relationship(0, 0)
+            .add_relationship(0, 3)
+            .add_relationship(1, 2)
+            .build();
+
+        let empty: &[usize;0] = &[];
+
+        assert_eq!(&[0, 1, 2, 3], graph.neighbors(0));
+        assert_eq!(&[2], graph.neighbors(1));
+        assert_eq!(empty, graph.neighbors(2))
+    }
+}
