@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use std::collections::hash_map::Entry;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::HashMap;
 
 struct Graph<T> {
@@ -98,24 +97,21 @@ where
     }
 
     pub fn build(&mut self) -> Graph<T> {
-        let mut offsets = Vec::with_capacity(self.node_count);
+        // initialize with 0
+        let mut offsets = vec![0; self.node_count];
+        // position at offset 0 stores the 0-degree
         let mut lists = vec![0];
-        let mut index = 1_usize;
 
-        for node_id in 0..self.node_count {
-            match self.adjacency_lists.entry(node_id) {
-                Occupied(entry) => {
-                    let mut list = entry.get().iter().copied().collect::<Vec<_>>();
-                    list.sort();
-                    let degree = list.len();
-                    offsets.insert(node_id, index);
-                    lists.push(degree);
-                    index += 1;
-                    lists.splice(index..index, list);
-                    index += degree;
-                }
-                Vacant(_) => offsets.insert(node_id, 0),
-            }
+        let adjacency_lists = std::mem::take(&mut self.adjacency_lists);
+        for (node_id, mut list) in adjacency_lists {
+            let degree = list.len();
+            list.sort();
+            offsets[node_id] = lists.len();
+
+            // try to avoid too much resizing, but might have no effect in the end
+            lists.reserve(degree + 1);
+            lists.push(degree);
+            lists.extend(list);
         }
 
         Graph {
