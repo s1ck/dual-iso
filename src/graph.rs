@@ -25,19 +25,31 @@ where
     }
 
     pub fn node_label(&self, node_id: usize) -> &T {
+        self.validate_node_id(node_id);
         self.node_labels.get(&node_id).unwrap()
     }
 
     pub fn degree(&self, node_id: usize) -> usize {
+        self.validate_node_id(node_id);
         let offset = self.offsets[node_id];
         let degree = self.lists[offset];
         degree
     }
 
     pub fn neighbors(&self, node_id: usize) -> &[usize] {
+        self.validate_node_id(node_id);
         let offset = self.offsets[node_id];
         let degree = self.lists[offset];
         &self.lists[offset + 1..offset + 1 + degree]
+    }
+
+    fn validate_node_id(&self, node_id: usize) {
+        if node_id >= self.node_count {
+            panic!(
+                "Node id {} must be within range [0..{}).",
+                node_id, self.node_count
+            )
+        }
     }
 }
 
@@ -62,6 +74,7 @@ where
     }
 
     pub fn add_node(&mut self, node_id: usize, node_label: T) -> &mut Self {
+        // TODO: check that node_id is valid, i.e node_id == self.node_count
         if let Entry::Vacant(o) = self.node_labels.entry(node_id) {
             o.insert(node_label);
             self.node_count += 1;
@@ -74,7 +87,7 @@ where
             panic!("Start node {} has not been added yet.", start_node);
         }
         if !self.node_labels.contains_key(&end_node) {
-            panic!("Start node {} has not been added yet.", end_node);
+            panic!("End node {} has not been added yet.", end_node);
         }
         self.adjacency_lists
             .entry(start_node)
@@ -100,8 +113,8 @@ where
                     index += 1;
                     lists.splice(index..index, list);
                     index += degree;
-                },
-                Vacant(_) => offsets.insert(node_id,0)
+                }
+                Vacant(_) => offsets.insert(node_id, 0),
             }
         }
 
@@ -139,6 +152,21 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Start node 0 has not been added yet")]
+    fn test_add_relationship_for_invalid_start_node() {
+        let _ = GraphBuilder::<&str>::new().add_relationship(0, 1).build();
+    }
+
+    #[test]
+    #[should_panic(expected = "End node 1 has not been added yet")]
+    fn test_add_relationship_for_invalid_end_node() {
+        let _ = GraphBuilder::new()
+            .add_node(0, "foo")
+            .add_relationship(0, 1)
+            .build();
+    }
+
+    #[test]
     fn test_node_label() {
         let graph = GraphBuilder::new()
             .add_node(0, "foo")
@@ -146,6 +174,13 @@ mod tests {
             .build();
         assert_eq!("foo", *graph.node_label(0));
         assert_eq!("bar", *graph.node_label(1))
+    }
+
+    #[test]
+    #[should_panic(expected = "Node id 1 must be within range [0..1).")]
+    fn test_node_label_for_invalid_node() {
+        let graph = GraphBuilder::new().add_node(0, "foo").build();
+        let _ = *graph.node_label(1);
     }
 
     #[test]
@@ -165,6 +200,13 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Node id 1 must be within range [0..1).")]
+    fn test_degree_for_invalid_node() {
+        let graph = GraphBuilder::new().add_node(0, "foo").build();
+        let _ = graph.degree(1);
+    }
+
+    #[test]
     fn test_neighbors() {
         let graph = GraphBuilder::new()
             .add_node(0, "foo")
@@ -178,7 +220,7 @@ mod tests {
             .add_relationship(1, 2)
             .build();
 
-        let empty: &[usize;0] = &[];
+        let empty: &[usize; 0] = &[];
 
         assert_eq!(&[0, 1, 2, 3], graph.neighbors(0));
         assert_eq!(&[2], graph.neighbors(1));
