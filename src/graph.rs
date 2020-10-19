@@ -75,7 +75,7 @@ where
     pub fn add_node(&mut self, node_id: usize, node_label: T) -> &mut Self {
         if node_id > self.node_count {
             panic!(
-                "Node id should be within range [0..{}], but was {}.",
+                "Next node id should be within range [0..{}], but was {}.",
                 self.node_count, node_id
             )
         }
