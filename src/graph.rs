@@ -73,7 +73,12 @@ where
     }
 
     pub fn add_node(&mut self, node_id: usize, node_label: T) -> &mut Self {
-        // TODO: check that node_id is valid, i.e node_id == self.node_count
+        if node_id > self.node_count {
+            panic!(
+                "Node id should be within range [0..{}], but was {}.",
+                self.node_count, node_id
+            )
+        }
         if let Entry::Vacant(o) = self.node_labels.entry(node_id) {
             o.insert(node_label);
             self.node_count += 1;
@@ -135,6 +140,15 @@ mod tests {
             .add_node(1, "bar")
             .build();
         assert_eq!(2, graph.node_count())
+    }
+
+    #[test]
+    #[should_panic(expected = "Next node id should be within range [0..1], but was 2.")]
+    fn test_add_invalid_node() {
+        let _ = GraphBuilder::new()
+            .add_node(0, "foo")
+            .add_node(2, "bar")
+            .build();
     }
 
     #[test]
