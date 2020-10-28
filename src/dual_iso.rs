@@ -1,13 +1,30 @@
+use std::hash::Hash;
+
 use crate::Graph;
 
-pub fn dual_iso<T>(graph: &Graph<T>, pattern: &Graph<T>) -> Vec<Vec<usize>> {
+pub type NestedVec = Vec<Vec<usize>>;
+
+pub fn dual_iso<T: Eq + Hash>(graph: &Graph<T>, pattern: &Graph<T>) -> NestedVec {
+    let initial_candidates = init_candidates(graph, pattern);
     todo!()
+}
+
+fn init_candidates<'graph, T: Eq + Hash>(
+    graph: &'graph Graph<T>,
+    pattern: &Graph<T>,
+) -> Vec<&'graph Vec<usize>> {
+    let mut candidates = Vec::with_capacity(pattern.node_count());
+    for pattern_node_id in 0..pattern.node_count() {
+        candidates.push(graph.nodes_by_label(pattern.node_label(pattern_node_id)))
+    }
+    candidates
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::GraphBuilder;
+
+    use super::*;
 
     #[test]
     fn match1() {
