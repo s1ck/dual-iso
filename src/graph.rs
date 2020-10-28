@@ -3,7 +3,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
-struct Graph<T> {
+pub struct Graph<T> {
     node_count: usize,
     relationship_count: usize,
     node_labels: HashMap<usize, T>,
@@ -52,7 +52,7 @@ where
     }
 }
 
-struct GraphBuilder<T> {
+pub struct GraphBuilder<T> {
     node_count: usize,
     relationship_count: usize,
     node_labels: HashMap<usize, T>,
