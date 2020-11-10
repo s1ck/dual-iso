@@ -19,7 +19,7 @@ pub fn dual_iso<T: Eq + Hash>(graph: &Graph<T>, pattern: &Graph<T>) -> NestedVec
     let mut matches: NestedVec = vec![];
     let mut initial_candidates = init_candidates(graph, pattern);
 
-    simple_simulation(graph, pattern, &mut initial_candidates);
+    dual_simulation(graph, pattern, &mut initial_candidates);
     search(graph, pattern, &mut matches, &initial_candidates, 0);
 
     matches
@@ -96,6 +96,58 @@ fn simple_simulation<T: Eq + Hash>(
     true
 }
 
+fn dual_simulation<T: Eq + Hash>(
+    graph: &Graph<T>,
+    pattern: &Graph<T>,
+    candidates: &mut Vec<Cow<Vec<usize>>>,
+) -> bool {
+    let mut is_updated = true;
+
+    while is_updated {
+        is_updated = false;
+        // for each node u_P in the pattern
+        for u_p in 0..pattern.node_count() {
+            // for each neighbor of u_P (v_P)
+            for v_p in pattern.neighbors(u_p) {
+                // updated candidate set for v_P
+                let mut v_g_new: Vec<usize> = vec![];
+                // updated candidate set for u_P
+                let mut u_g_new: Vec<usize> = vec![];
+                // for each candidate of u_P (u_G)
+                for u_g in &*candidates[u_p] {
+                    // check if at least one edge exists in the graph
+                    let mut intersect = intersect_sorted(graph.neighbors(*u_g),&*candidates[*v_p]);
+
+                    if !intersect.is_empty() {
+                        u_g_new.push(*u_g);
+                    } else {
+                        // trigger re-eval of candidates if u_Q changed
+                        is_updated = true;
+                    }
+
+                    // TODO find better union
+                    v_g_new.append(&mut intersect);
+                    v_g_new.sort();
+                    v_g_new.dedup();
+                }
+                // if there are no candidates for either u_P or v_P
+                if u_g_new.is_empty() || v_g_new.is_empty() {
+                    return false;
+                }
+
+                // trigger re-eval of candidates if v_Q changed
+                if v_g_new.len() < (*candidates[*v_p]).len() {
+                    is_updated = true;
+                }
+
+                candidates[*v_p] = Cow::Owned(intersect(&*candidates[*v_p], &*v_g_new));
+                candidates[u_p] = Cow::Owned(u_g_new);
+            }
+        }
+    }
+    true
+}
+
 fn do_intersect_sorted(sorted: &[usize], other: &[usize]) -> bool {
     for o in other {
         if sorted.binary_search(o).is_ok() {
@@ -109,6 +161,16 @@ fn intersect_sorted(sorted: &[usize], other: &[usize]) -> Vec<usize> {
     let mut intersect = vec![];
     for o in other {
         if sorted.binary_search(o).is_ok() {
+            intersect.push(o.clone())
+        }
+    }
+    intersect
+}
+
+fn intersect(first: &[usize], other: &[usize]) -> Vec<usize> {
+    let mut intersect = vec![];
+    for o in other {
+        if first.contains(o) {
             intersect.push(o.clone())
         }
     }
@@ -156,7 +218,8 @@ mod tests {
             .build();
 
         let matches = simple_iso(&graph, &pattern);
-
+        assert_eq!(vec![vec![2, 6, 7]], matches);
+        let matches = dual_iso(&graph, &pattern);
         assert_eq!(vec![vec![2, 6, 7]], matches)
     }
 }
