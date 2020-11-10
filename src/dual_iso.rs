@@ -5,6 +5,16 @@ use crate::Graph;
 
 pub type NestedVec = Vec<Vec<usize>>;
 
+pub fn simple_iso<T: Eq + Hash>(graph: &Graph<T>, pattern: &Graph<T>) -> NestedVec {
+    let mut matches: NestedVec = vec![];
+    let mut initial_candidates = init_candidates(graph, pattern);
+
+    simple_simulation(graph, pattern, &mut initial_candidates);
+    search(graph, pattern, &mut matches, &initial_candidates, 0);
+
+    matches
+}
+
 pub fn dual_iso<T: Eq + Hash>(graph: &Graph<T>, pattern: &Graph<T>) -> NestedVec {
     let mut matches: NestedVec = vec![];
     let mut initial_candidates = init_candidates(graph, pattern);
@@ -134,7 +144,7 @@ mod tests {
             .add_relationship(1, 2)
             .build();
 
-        let matches = dual_iso(&graph, &pattern);
+        let matches = simple_iso(&graph, &pattern);
 
         assert_eq!(vec![vec![2, 6, 7]], matches)
     }
