@@ -79,16 +79,8 @@ fn simple_simulation<T: Eq + Hash>(
                 let mut u_g_new: Vec<usize> = vec![];
                 // for each candidate of u_P (u_G)
                 for u_g in &*candidates[u_p] {
-                    let mut found_relationship = false;
-                    // for each candidate of v_P (v_G)
-                    // TODO: efficient intersect between graph.neighbors(u_g) and candidates(v_p)
-                    for v_g in &*candidates[*v_p] {
-                        if graph.neighbors(*u_g).binary_search(v_g).is_ok() {
-                            found_relationship = true;
-                            break;
-                        }
-                    }
-                    if found_relationship {
+                    // check if at least one edge exists in the graph
+                    if do_intersect_sorted(graph.neighbors(*u_g),&*candidates[*v_p]) {
                         u_g_new.push(*u_g);
                     } else {
                         is_updated = true;
@@ -102,6 +94,25 @@ fn simple_simulation<T: Eq + Hash>(
         }
     }
     true
+}
+
+fn do_intersect_sorted(sorted: &[usize], other: &[usize]) -> bool {
+    for o in other {
+        if sorted.binary_search(o).is_ok() {
+            return true;
+        }
+    }
+    false
+}
+
+fn intersect_sorted(sorted: &[usize], other: &[usize]) -> Vec<usize> {
+    let mut intersect = vec![];
+    for o in other {
+        if sorted.binary_search(o).is_ok() {
+            intersect.push(o.clone())
+        }
+    }
+    intersect
 }
 
 #[cfg(test)]
