@@ -117,19 +117,14 @@ fn dual_simulation<T: Eq + Hash>(
                 // for each candidate of u_P (u_G)
                 for u_g in &*candidates[u_p] {
                     // check if at least one edge exists in the graph
-                    let mut intersect = intersect_sorted(graph.neighbors(*u_g), &*candidates[*v_p]);
-
+                    let intersect = intersect_sorted(graph.neighbors(*u_g), &*candidates[*v_p]);
                     if !intersect.is_empty() {
                         u_g_new.push(*u_g);
                     } else {
                         // trigger re-eval of candidates if u_Q changed
                         is_updated = true;
                     }
-
-                    // TODO find better union
-                    v_g_new.append(&mut intersect);
-                    v_g_new.sort();
-                    v_g_new.dedup();
+                    union_into_sorted(&mut v_g_new, &*intersect);
                 }
                 // if there are no candidates for either u_P or v_P
                 if u_g_new.is_empty() || v_g_new.is_empty() {
@@ -193,6 +188,85 @@ fn intersect_sorted(left: &[usize], right: &[usize]) -> Vec<usize> {
 
     intersect.truncate(count);
     intersect
+}
+
+fn union_into_sorted(left: &mut Vec<usize>, right: &[usize]) {
+    let mut i = 0;
+    let mut j = 0;
+    let m = left.len();
+    let n = right.len();
+
+    while i < m && j < n {
+        if left[i] < right[j] {
+            i += 1;
+        } else if left[i] > right[j] {
+            left.insert(i, right[j]);
+            j += 1;
+        } else {
+            i += 1;
+            j += 1;
+        }
+    }
+
+    while j < n {
+        left.push(right[j]);
+        j += 1;
+    }
+}
+
+fn union_sorted(left: &[usize], right: &[usize]) -> Vec<usize> {
+    let mut i = 0;
+    let mut j = 0;
+    let m = left.len();
+    let n = right.len();
+    let mut previous = 0;
+    let mut count = 0;
+
+    let mut first = true;
+
+    let mut union = Vec::new();
+    union.resize(m + n, 0);
+
+    while i < m && j < n {
+        if left[i] < right[j] {
+            if first || previous < left[i] {
+                first = false;
+                previous = left[i];
+                union[count] = previous;
+                count += 1;
+            }
+            i += 1;
+        } else if left[i] > right[j] {
+            if previous < right[j] {
+                previous = right[j];
+                union[count] = previous;
+                count += 1;
+            }
+            j += 1;
+        } else {
+            if first || previous < left[i] {
+                first = false;
+                previous = left[i];
+                union[count] = previous;
+                count += 1;
+            }
+            i += 1;
+            j += 1;
+        }
+    }
+    while i < m {
+        union[count] = left[i];
+        count += 1;
+        i += 1;
+    }
+    while j < n {
+        union[count] = right[j];
+        count += 1;
+        j += 1;
+    }
+
+    union.truncate(count);
+    union
 }
 
 #[cfg(test)]
@@ -276,5 +350,30 @@ mod tests {
         let b = vec![4];
 
         assert!(!do_intersect_sorted(&a, &b));
+    }
+
+    #[test]
+    fn test_union_into_sorted() {
+        let mut a = vec![0, 1, 2, 3, 4];
+        let b = vec![2, 3, 4, 5, 6];
+        union_into_sorted(&mut a, &b);
+        assert_eq!(vec![0, 1, 2, 3, 4, 5, 6], a);
+
+        let mut a = vec![2, 3, 4, 5, 6];
+        let b = vec![0, 1, 2, 3, 4];
+        union_into_sorted(&mut a, &b);
+        assert_eq!(vec![0, 1, 2, 3, 4, 5, 6], a);
+
+        let mut a = vec![0, 1, 2, 3, 4];
+        let b = vec![0, 1, 2, 3, 4];
+
+        union_into_sorted(&mut a, &b);
+        assert_eq!(vec![0, 1, 2, 3, 4], a);
+
+        let mut a = vec![0];
+        let b = vec![4];
+
+        union_into_sorted(&mut a, &b);
+        assert_eq!(vec![0, 4], a);
     }
 }
