@@ -7,7 +7,7 @@ criterion_group!(benches, random_graph_benchmarks);
 criterion_main!(benches);
 
 fn random_graph_benchmarks(c: &mut Criterion) {
-    let n = 42;
+    let n = 1000;
     let p = 0.1;
 
     let graph = random_graph(n, p);

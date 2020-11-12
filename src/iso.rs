@@ -214,61 +214,6 @@ fn union_into_sorted(left: &mut Vec<usize>, right: &[usize]) {
     }
 }
 
-fn union_sorted(left: &[usize], right: &[usize]) -> Vec<usize> {
-    let mut i = 0;
-    let mut j = 0;
-    let m = left.len();
-    let n = right.len();
-    let mut previous = 0;
-    let mut count = 0;
-
-    let mut first = true;
-
-    let mut union = Vec::new();
-    union.resize(m + n, 0);
-
-    while i < m && j < n {
-        if left[i] < right[j] {
-            if first || previous < left[i] {
-                first = false;
-                previous = left[i];
-                union[count] = previous;
-                count += 1;
-            }
-            i += 1;
-        } else if left[i] > right[j] {
-            if previous < right[j] {
-                previous = right[j];
-                union[count] = previous;
-                count += 1;
-            }
-            j += 1;
-        } else {
-            if first || previous < left[i] {
-                first = false;
-                previous = left[i];
-                union[count] = previous;
-                count += 1;
-            }
-            i += 1;
-            j += 1;
-        }
-    }
-    while i < m {
-        union[count] = left[i];
-        count += 1;
-        i += 1;
-    }
-    while j < n {
-        union[count] = right[j];
-        count += 1;
-        j += 1;
-    }
-
-    union.truncate(count);
-    union
-}
-
 #[cfg(test)]
 mod tests {
     use crate::GraphBuilder;
