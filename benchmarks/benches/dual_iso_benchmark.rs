@@ -1,7 +1,7 @@
-use criterion::{BenchmarkId, black_box, Criterion, criterion_group, criterion_main};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::prelude::*;
 
-use ::dual_iso::{dual_iso, Graph, GraphBuilder, simple_iso};
+use ::dual_iso::{dual_iso, simple_iso, Graph, GraphBuilder};
 
 criterion_group!(benches, random_graph_benchmarks);
 criterion_main!(benches);

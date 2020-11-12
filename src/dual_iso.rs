@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::cmp::min;
 use std::hash::Hash;
 
 use crate::Graph;
@@ -80,7 +81,7 @@ fn simple_simulation<T: Eq + Hash>(
                 // for each candidate of u_P (u_G)
                 for u_g in &*candidates[u_p] {
                     // check if at least one edge exists in the graph
-                    if do_intersect_sorted(graph.neighbors(*u_g),&*candidates[*v_p]) {
+                    if do_intersect_sorted(graph.neighbors(*u_g), &*candidates[*v_p]) {
                         u_g_new.push(*u_g);
                     } else {
                         is_updated = true;
@@ -116,7 +117,7 @@ fn dual_simulation<T: Eq + Hash>(
                 // for each candidate of u_P (u_G)
                 for u_g in &*candidates[u_p] {
                     // check if at least one edge exists in the graph
-                    let mut intersect = intersect_sorted(graph.neighbors(*u_g),&*candidates[*v_p]);
+                    let mut intersect = intersect_sorted(graph.neighbors(*u_g), &*candidates[*v_p]);
 
                     if !intersect.is_empty() {
                         u_g_new.push(*u_g);
@@ -157,18 +158,39 @@ fn do_intersect_sorted(sorted: &[usize], other: &[usize]) -> bool {
     false
 }
 
-fn intersect_sorted(sorted: &[usize], other: &[usize]) -> Vec<usize> {
-    let mut intersect = vec![];
-    for o in other {
-        if sorted.binary_search(o).is_ok() {
-            intersect.push(o.clone())
+fn intersect_sorted(left: &[usize], right: &[usize]) -> Vec<usize> {
+    let mut intersect = Vec::new();
+    intersect.resize(min(left.len(), right.len()), 0);
+
+    let mut count = 0;
+    let mut i = 0;
+    let mut j = 0;
+    let m = left.len();
+    let n = right.len();
+    let mut prev = usize::max_value();
+
+    while i < m && j < n {
+        if left[i] < right[j] {
+            i += 1;
+        } else if left[i] > right[j] {
+            j += 1;
+        } else {
+            if left[i] != prev {
+                prev = intersect[count];
+                intersect[count] = left[i];
+                count += 1;
+            }
+            i += 1;
+            j += 1;
         }
     }
+
+    intersect.truncate(count);
     intersect
 }
 
 fn intersect(first: &[usize], other: &[usize]) -> Vec<usize> {
-    let mut intersect = vec![];
+    let mut intersect = Vec::with_capacity(min(first.len(), other.len()));
     for o in other {
         if first.contains(o) {
             intersect.push(o.clone())
@@ -221,5 +243,24 @@ mod tests {
         assert_eq!(vec![vec![2, 6, 7]], matches);
         let matches = dual_iso(&graph, &pattern);
         assert_eq!(vec![vec![2, 6, 7]], matches)
+    }
+
+    #[test]
+    fn test_intersect_sorted() {
+        let a = vec![0, 1, 2, 3, 4];
+        let b = vec![2, 3, 4, 5, 6];
+
+        assert_eq!(vec![2, 3, 4], intersect_sorted(&a, &b));
+
+        let a = vec![0, 1, 2, 3, 4];
+        let b = vec![0, 1, 2, 3, 4];
+
+        assert_eq!(vec![0, 1, 2, 3, 4], intersect_sorted(&a, &b));
+
+        let a = vec![0];
+        let b = vec![4];
+
+        let expected: Vec<usize> = vec![];
+        assert_eq!(expected, intersect_sorted(&a, &b))
     }
 }
