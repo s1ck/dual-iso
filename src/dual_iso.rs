@@ -141,7 +141,7 @@ fn dual_simulation<T: Eq + Hash>(
                     is_updated = true;
                 }
 
-                candidates[*v_p] = Cow::Owned(intersect(&*candidates[*v_p], &*v_g_new));
+                candidates[*v_p] = Cow::Owned(intersect_sorted(&*candidates[*v_p], &*v_g_new));
                 candidates[u_p] = Cow::Owned(u_g_new);
             }
         }
@@ -149,13 +149,19 @@ fn dual_simulation<T: Eq + Hash>(
     true
 }
 
-fn do_intersect_sorted(sorted: &[usize], other: &[usize]) -> bool {
-    for o in other {
-        if sorted.binary_search(o).is_ok() {
+fn do_intersect_sorted(left: &[usize], right: &[usize]) -> bool {
+    let mut i = 0;
+    let mut j = 0;
+    while i < left.len() && j < right.len() {
+        if left[i] < right[j] {
+            i += 1;
+        } else if left[i] > right[j] {
+            j += 1;
+        } else {
             return true;
         }
     }
-    false
+    return false;
 }
 
 fn intersect_sorted(left: &[usize], right: &[usize]) -> Vec<usize> {
@@ -189,16 +195,6 @@ fn intersect_sorted(left: &[usize], right: &[usize]) -> Vec<usize> {
     intersect
 }
 
-fn intersect(first: &[usize], other: &[usize]) -> Vec<usize> {
-    let mut intersect = Vec::with_capacity(min(first.len(), other.len()));
-    for o in other {
-        if first.contains(o) {
-            intersect.push(o.clone())
-        }
-    }
-    intersect
-}
-
 #[cfg(test)]
 mod tests {
     use crate::GraphBuilder;
@@ -206,7 +202,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn match1() {
+    fn paper_match() {
         let graph = GraphBuilder::new()
             .add_node(0, "b")
             .add_node(1, "a")
@@ -262,5 +258,23 @@ mod tests {
 
         let expected: Vec<usize> = vec![];
         assert_eq!(expected, intersect_sorted(&a, &b))
+    }
+
+    #[test]
+    fn test_do_intersect_sorted() {
+        let a = vec![0, 1, 2, 3, 4];
+        let b = vec![2, 3, 4, 5, 6];
+
+        assert!(do_intersect_sorted(&a, &b));
+
+        let a = vec![0, 1, 2, 3, 4];
+        let b = vec![0, 1, 2, 3, 4];
+
+        assert!(do_intersect_sorted(&a, &b));
+
+        let a = vec![0];
+        let b = vec![4];
+
+        assert!(!do_intersect_sorted(&a, &b));
     }
 }
