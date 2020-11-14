@@ -135,6 +135,11 @@ where
                 .push(*node_id);
         }
 
+        // Sort candidates to allow faster ops in simulation
+        for (_, nodes) in label_idx.iter_mut() {
+            nodes.sort();
+        }
+
         Graph {
             node_count: self.node_count,
             relationship_count: self.relationship_count,

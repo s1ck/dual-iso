@@ -1,12 +1,13 @@
-use ::dual_iso::{dual_iso, Graph, GraphBuilder};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::prelude::*;
+
+use ::dual_iso::{dual_iso, simple_iso, Graph, GraphBuilder};
 
 criterion_group!(benches, random_graph_benchmarks);
 criterion_main!(benches);
 
 fn random_graph_benchmarks(c: &mut Criterion) {
-    let n = 42;
+    let n = 1000;
     let p = 0.1;
 
     let graph = random_graph(n, p);
@@ -21,16 +22,24 @@ fn random_graph_benchmarks(c: &mut Criterion) {
         .add_relationship(1, 0)
         .add_relationship(1, 2)
         .build();
-    dbg!(pattern.node_count());
-    dbg!(pattern.relationship_count());
 
-    dbg!(dual_iso(&graph, &pattern).len());
+    c.bench_with_input(
+        BenchmarkId::new("simple_iso", format!("random_graph n = {}, p = {}", n, p)),
+        &(&graph, &pattern),
+        |b, g| b.iter(|| simple_iso_bench(black_box(g))),
+    );
 
     c.bench_with_input(
         BenchmarkId::new("dual_iso", format!("random_graph n = {}, p = {}", n, p)),
         &(&graph, &pattern),
         |b, g| b.iter(|| dual_iso_bench(black_box(g))),
     );
+}
+
+fn simple_iso_bench(input: &(&Graph<&str>, &Graph<&str>)) -> usize {
+    let (graph, pattern) = input;
+    let matches = simple_iso(&graph, &pattern);
+    matches.len()
 }
 
 fn dual_iso_bench(input: &(&Graph<&str>, &Graph<&str>)) -> usize {
